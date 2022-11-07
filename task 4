@@ -1,0 +1,128 @@
+
+filter_spam1 = FILTER cleantable BY class == 1;
+spam_group1= GROUP filter_spam1 ALL;
+spam_count1= FOREACH spam_group1 GENERATE COUNT (filter_spam1.reviewerID);
+dump spam_count1;
+
+filter_ham1= FILTER cleantable BY class == 0;
+ham_group1= GROUP filter_ham1 ALL;
+ham_count1= FOREACH ham_group1 GENERATE COUNT (filter_ham1.reviewerID);
+dump ham_count1;
+
+STORE filter_spam1 INTO 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonStorage();
+
+STORE filter_ham1 INTO 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonStorage();
+
+
+spam_test = LOAD 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonLoader('id:(oid:chararray), reviewerID:chararray, reviewerName:chararray, reviewText:chararray, class:int');
+spam_group1= GROUP spam_test ALL;
+spam_count1= FOREACH spam_group1 GENERATE COUNT (spam_test.reviewerID);
+dump spam_count1;
+
+ham_test = LOAD 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonLoader('id:(oid:chararray), reviewerID:chararray, reviewerName:chararray, reviewText:chararray, class:int');
+ham_group1= GROUP ham_test ALL;
+ham_count1= FOREACH ham_group1 GENERATE COUNT (ham_test.reviewerID);
+dump ham_count1;
+
+
+
+5) All spam and ham key words
+spam_words = FOREACH spam_test GENERATE FLATTEN(TOKENIZE(reviewText)) as word;
+spam_group1 = GROUP spam_words BY word;
+word_count = FOREACH spam_group1 GENERATE group, COUNT(spam_words);
+DUMP word_count;
+
+ham_words = FOREACH ham_test GENERATE FLATTEN(TOKENIZE(reviewText)) as word1;
+ham_group1 = GROUP ham_words BY word1;
+word_countham = FOREACH ham_group1 GENERATE group, COUNT(ham_words);
+DUMP word_countham;
+
+6) Counting the top 10 spam and ham keywords
+
+word_countham = FOREACH ham_group1 GENERATE group as grouping, COUNT(ham_words) as count;
+ordered_ham= ORDER word_countham BY count DESC;
+top10ham= LIMIT ordered_ham 10;
+dump top10ham;
+
+word_countspam = FOREACH spam_group1 GENERATE group as grouping, COUNT(spam_words) as count;
+ordered_spam= ORDER word_countspam BY count DESC;
+top10spam= LIMIT ordered_spam 10;
+dump top10spam;
+
+7) TOP 10 Spam Account
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+spam_test = LOAD 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonLoader('id:(oid:chararray), reviewerID:chararray, reviewerName:chararray, reviewText:chararray, summary:chararray, class:int');
+
+
+spam_Reviewer_Group = GROUP spam_test by reviewerID;
+spam_Reviewer_Count = FOREACH spam_Reviewer_Group GENERATE FLATTEN(group) as reviewerID, COUNT($1) as count;
+spam_Reviewer_Ordered= ORDER spam_Reviewer_Count by count DESC;
+top10SpamReviewer= LIMIT spam_Reviewer_Ordered 10;
+dump top10SpamReviewer;
+
+Spam_Total_Data1= JOIN top10SpamReviewer by reviewerID, spam_test by reviewerID;
+
+Spam_Total_Data= FOREACH Spam_Total_Data1 GENERATE top10SpamReviewer::reviewerID as reviewerID, spam_test::reviewerName as reviewerName, spam_test::reviewText as reviewText;
+Top10Spam_Total_Data= LIMIT Spam_Total_Data 20;
+
+Spam_Name_And_Id= FOREACH Spam_Total_Data1 GENERATE top10SpamReviewer::reviewerID as reviewerID, spam_test::reviewerName as reviewerName, top10SpamReviewer::count as count;
+Dump Spam_Name_And_Id;
+
+Spam_Name_And_Id1= DISTINCT Spam_Name_And_Id;
+
+STORE Spam_Name_And_Id1 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonStorage();
+
+
+8) TOP 10 Ham Account
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ham_Reviewer_Group = GROUP ham_test by reviewerID;
+ham_Reviewer_Count = FOREACH ham_Reviewer_Group GENERATE FLATTEN(group) as reviewerID, COUNT($1) as count;
+ham_Reviewer_Ordered= ORDER ham_Reviewer_Count by count DESC;
+top10hamReviewer= LIMIT ham_Reviewer_Ordered 10;
+dump top10hamReviewer;
+
+Ham_Total_Data1= JOIN top10hamReviewer by reviewerID, ham_test by reviewerID;
+
+Ham_Total_Data= FOREACH Ham_Total_Data1 GENERATE top10hamReviewer::reviewerID as reviewerID, ham_test::reviewerName as reviewerName, ham_test::reviewText as reviewText;
+Top10Ham_Total_Data= LIMIT Ham_Total_Data 20;
+dump Top10Ham_Total_Data;
+
+Ham_Name_And_Id= FOREACH Ham_Total_Data1 GENERATE top10hamReviewer::reviewerID as reviewerID, ham_test::reviewerName as reviewerName, top10hamReviewer::count as count;
+Dump Ham_Name_And_Id;
+
+Ham_Name_And_Id1= DISTINCT Ham_Name_And_Id;
+
+STORE Ham_Name_And_Id1 INTO 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonStorage();
+
+
+
