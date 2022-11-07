@@ -1,0 +1,17 @@
+table_frame = LOAD 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonLoader('id:(oid:chararray), reviewerID:chararray, asin:chararray, reviewerName:chararray, helpful:{(h0:int, h1:int)}, reviewText:chararray, overall:int, summary:chararray, unixReviewTime:int, reviewTime:chararray, category:chararray, class:int');
+table_group = GROUP table_frame ALL;
+row_count = FOREACH table_group GENERATE COUNT (table_frame.reviewerID);
+top10table_frame= LIMIT table_frame 5;
+dump top10table_frame;
+
+
+
+cleantable1= FOREACH table_frame GENERATE id AS id, reviewerID AS reviewerID, reviewerName AS reviewerName, REPLACE(reviewText,'([^a-zA-Z\\s]+)','') AS reviewText, class AS class;
+cleantable2= FOREACH cleantable1 GENERATE id AS id, reviewerID AS reviewerID, reviewerName AS reviewerName, LOWER(reviewText) AS reviewText, class AS class;
+
+cleantable3 = FILTER cleantable2 BY reviewerName != 'Amazon Customer';
+cleantable4 = FILTER cleantable3 BY reviewerName is not null;
+cleantable5 = FILTER cleantable4 by reviewText is not null;
+cleantable = FILTER cleantable5 by class==0 OR class==1;
+
+STORE cleantable INTO 'gs://dataproc-staging-us-central1-1068940177619-3y4jhuhi/datasetpr.json ' USING JsonStorage();
